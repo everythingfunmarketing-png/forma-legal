@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<meta http-equiv="cache-control" content="no-cache">
+<meta name="forma-admin-version" content="4">
 <title>Forma Admin</title>
 <style>
   :root { --bg:#000; --surface:#161616; --raised:#222; --line:#2a2a2a; --ink:#fff; --muted:#9c9c9c; --blue:#4a7cf0; --red:#f0665a; --green:#33c76b; }
@@ -102,7 +104,7 @@
   <div id="app" class="hidden">
     <div class="top">
       <div><div class="eyebrow">Forma</div><h1>Admin</h1></div>
-      <div class="row"><button class="ghost small" id="refresh">Refresh</button><button class="ghost small" id="logout">Lock</button></div>
+      <div class="row"><span class="muted" style="font-size:12px">Version 4</span><button class="ghost small" id="refresh">Refresh</button><button class="ghost small" id="logout">Lock</button></div>
     </div>
 
     <div class="card">
@@ -298,6 +300,16 @@ $("save").onclick = async () => {
   try { data = await call({ action: "save_settings", settings }); render(); toast("Saved. The app uses it on the next scan."); }
   catch (e) { toast(e.message, true); }
 };
+
+// GitHub caches this page for up to 10 minutes: if a newer version is online, load it straight away.
+(async () => {
+  try {
+    const mine = document.querySelector('meta[name="forma-admin-version"]').content;
+    const html = await (await fetch(location.pathname + "?check=" + Date.now(), { cache: "no-store" })).text();
+    const live = (html.match(/name="forma-admin-version" content="(\d+)"/) || [])[1];
+    if (live && live !== mine && !location.search.includes("v=" + live)) location.replace(location.pathname + "?v=" + live);
+  } catch (e) {}
+})();
 
 const saved = read("forma.admin.key");
 if (saved) { $("key").value = saved; $("enter").click(); }
