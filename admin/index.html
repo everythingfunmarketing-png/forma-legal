@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Forma Admin</title>
+<style>
+  :root { --bg:#000; --surface:#161616; --raised:#222; --line:#2a2a2a; --ink:#fff; --muted:#9c9c9c; --blue:#4a7cf0; --red:#f0665a; --green:#33c76b; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, Arial, sans-serif; }
+  .wrap { max-width:1100px; margin:0 auto; padding:28px 16px 60px; }
+  h1 { font:900 30px/1 -apple-system, "SF Pro Display", Arial, sans-serif; letter-spacing:.5px; margin:6px 0 0; text-transform:uppercase; font-stretch:expanded; }
+  .eyebrow { color:var(--muted); font-size:11px; font-weight:600; letter-spacing:1.4px; text-transform:uppercase; }
+  .card { background:var(--surface); border-radius:20px; padding:20px; margin-top:18px; }
+  .card h2 { font:800 16px/1 -apple-system, Arial, sans-serif; text-transform:uppercase; letter-spacing:.6px; margin:0 0 14px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:12px; }
+  label { display:block; color:var(--muted); font-size:12px; margin-bottom:6px; }
+  input[type=number], input[type=text], input[type=password], input[type=search] { width:100%; background:var(--raised); color:var(--ink); border:1px solid transparent; border-radius:12px; padding:11px 12px; font:inherit; outline:none; }
+  input:focus { border-color:var(--blue); }
+  button { font:inherit; cursor:pointer; border:0; border-radius:999px; padding:10px 18px; font-weight:600; }
+  .primary { background:var(--ink); color:#000; }
+  .ghost { background:var(--raised); color:var(--ink); }
+  .small { padding:6px 12px; font-size:13px; }
+  button:disabled { opacity:.4; cursor:default; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
+  .chip { background:var(--raised); border-radius:999px; padding:6px 8px 6px 12px; display:flex; align-items:center; gap:6px; font-size:14px; }
+  .chip button { background:none; color:var(--muted); padding:0 4px; font-size:16px; line-height:1; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .row input:not([type=checkbox]) { flex:1; min-width:160px; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; }
+  .stat { background:var(--raised); border-radius:16px; padding:14px; }
+  .stat b { display:block; font-size:26px; font-variant-numeric:tabular-nums; }
+  .stat span { color:var(--muted); font-size:12px; }
+  .table { width:100%; overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; min-width:820px; }
+  th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:middle; font-variant-numeric:tabular-nums; }
+  th { color:var(--muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+  td.email { max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:3px 9px; border-radius:999px; background:var(--raised); color:var(--muted); white-space:nowrap; }
+  .badge.vip { background:var(--blue); color:#fff; }
+  .badge.owner, .badge.friend { background:#fff; color:#000; }
+  td input[type=number] { width:80px; padding:7px 8px; }
+  .switch { position:relative; width:44px; height:26px; display:inline-block; }
+  .switch input { opacity:0; width:0; height:0; }
+  .switch span { position:absolute; inset:0; background:var(--raised); border-radius:999px; transition:.2s; }
+  .switch span::after { content:""; position:absolute; width:20px; height:20px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
+  .switch input:checked + span { background:var(--blue); }
+  .switch input:checked + span::after { transform:translateX(18px); }
+  .muted { color:var(--muted); }
+  .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#fff; color:#000; padding:10px 18px; border-radius:999px; font-weight:600; opacity:0; transition:.25s; pointer-events:none; }
+  .toast.show { opacity:1; }
+  .toast.err { background:var(--red); color:#fff; }
+  .login { max-width:420px; margin:12vh auto 0; }
+  /* Phones: each account becomes a card instead of a wide table row. */
+  @media (max-width: 720px) {
+    h1 { font-size:26px; }
+    .card { padding:16px; border-radius:18px; }
+    table { min-width:0; }
+    thead { display:none; }
+    table, tbody, tr, td { display:block; width:100%; }
+    tr { background:var(--raised); border-radius:16px; padding:12px 14px; margin-bottom:10px; }
+    td { border:0; padding:5px 0; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    td::before { content:attr(data-label); color:var(--muted); font-size:13px; }
+    td.email { display:block; max-width:none; white-space:normal; font-weight:600; padding-bottom:8px; }
+    td.email::before { content:none; }
+    td:last-child::before { content:none; }
+    td:last-child button { width:100%; }
+    .top { flex-wrap:wrap; }
+    #search { max-width:none !important; }
+  }
+  .hidden { display:none; }
+  .top { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="login" class="login">
+    <div class="eyebrow">Forma</div>
+    <h1>Admin</h1>
+    <div class="card">
+      <label for="key">Admin key</label>
+      <input id="key" type="password" autocomplete="current-password" placeholder="Paste your admin key">
+      <div class="row" style="margin-top:12px">
+        <label style="margin:0; display:flex; gap:8px; align-items:center"><input id="remember" type="checkbox" checked> Remember on this computer</label>
+      </div>
+      <div style="margin-top:14px"><button class="primary" id="enter">Open admin</button></div>
+      <p class="muted" style="font-size:13px; margin-bottom:0">Your admin key is in Config/admin-key.txt in the Forma folder on your Mac. Never share it.</p>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <div class="top">
+      <div><div class="eyebrow">Forma</div><h1>Admin</h1></div>
+      <div class="row"><button class="ghost small" id="refresh">Refresh</button><button class="ghost small" id="logout">Lock</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Overview</h2>
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <div class="card">
+      <h2>Scan limits</h2>
+      <div class="grid">
+        <div><label for="free_scans">Free scans per account</label><input id="free_scans" type="number" min="0"></div>
+        <div><label for="trial_scans">Scans during free trial</label><input id="trial_scans" type="number" min="0"></div>
+        <div><label for="pro_monthly_scans">Pro scans per month</label><input id="pro_monthly_scans" type="number" min="0"></div>
+        <div><label for="vip_monthly_scans">VIP scans per month</label><input id="vip_monthly_scans" type="number" min="0"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>VIP access</h2>
+      <label>Names: any email containing one of these gets VIP</label>
+      <div class="chips" id="vip_match"></div>
+      <div class="row"><input id="matchInput" type="text" placeholder="Add a name, e.g. danyragab"><button class="ghost" id="addMatch">Add</button></div>
+      <label style="margin-top:16px">Exact emails with VIP</label>
+      <div class="chips" id="vip_emails"></div>
+      <div class="row"><input id="emailInput" type="text" placeholder="Add an email"><button class="ghost" id="addEmail">Add</button></div>
+      <div style="margin-top:16px"><button class="primary" id="save">Save limits and VIP</button></div>
+    </div>
+
+    <div class="card">
+      <div class="top" style="align-items:center"><h2 style="margin:0">Accounts</h2><input id="search" type="search" placeholder="Search email" style="max-width:260px"></div>
+      <div class="table" style="margin-top:12px">
+        <table>
+          <thead><tr><th>Email</th><th>Access</th><th>This month</th><th>All time</th><th>Free used</th><th>Extra scans</th><th>VIP</th><th></th></tr></thead>
+          <tbody id="users"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API = "https://riprwxnnploqkorjpomb.supabase.co/functions/v1/admin";
+const $ = (id) => document.getElementById(id);
+let key = "", data = null, lists = { vip_match: [], vip_emails: [] };
+
+function store(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+function read(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+function toast(msg, err) {
+  const t = $("toast"); t.textContent = msg; t.className = "toast show" + (err ? " err" : "");
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.className = "toast", 2400);
+}
+
+async function call(body) {
+  const r = await fetch(API, { method: "POST", headers: { "content-type": "application/json", "x-admin-key": key }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ("Error " + r.status));
+  return j;
+}
+
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c])); }
+
+function render() {
+  const s = data.settings;
+  for (const k of ["free_scans", "trial_scans", "pro_monthly_scans", "vip_monthly_scans"]) $(k).value = s[k] ?? "";
+  lists = { vip_match: [...(s.vip_match || [])], vip_emails: [...(s.vip_emails || [])] };
+  renderChips();
+  const u = data.users;
+  const vip = u.filter((x) => x.access !== "Standard").length;
+  const month = u.reduce((a, x) => a + x.scans_month, 0), all = u.reduce((a, x) => a + x.scans_total, 0);
+  $("stats").innerHTML = [["Accounts", u.length], ["VIP, owners and friends", vip], ["Scans this month", month], ["Scans all time", all]]
+    .map(([l, v]) => `<div class="stat"><b>${v.toLocaleString()}</b><span>${l}</span></div>`).join("");
+  renderUsers();
+}
+
+function renderChips() {
+  for (const k of ["vip_match", "vip_emails"]) {
+    $(k).innerHTML = lists[k].length ? lists[k].map((v, i) => `<span class="chip">${esc(v)}<button data-k="${k}" data-i="${i}" aria-label="Remove ${esc(v)}">×</button></span>`).join("")
+      : `<span class="muted">None yet</span>`;
+  }
+}
+
+function renderUsers() {
+  const q = $("search").value.trim().toLowerCase();
+  const rows = data.users.filter((x) => !q || (x.email || "").toLowerCase().includes(q));
+  $("users").innerHTML = rows.map((x) => {
+    const cls = x.access.startsWith("VIP") ? "vip" : x.access === "Owner" ? "owner" : x.access === "Friend" ? "friend" : "";
+    return `<tr>
+      <td class="email" title="${esc(x.email)}">${esc(x.email || "No email (Apple private)")}<div class="muted" style="font-size:12px">Joined ${new Date(x.created_at).toLocaleDateString()}</div></td>
+      <td data-label="Access"><span class="badge ${cls}">${esc(x.access)}</span></td>
+      <td data-label="Scans this month">${x.scans_month}</td>
+      <td data-label="Scans all time">${x.scans_total}</td>
+      <td data-label="Free scans used">${x.free_used} / ${data.settings.free_scans ?? "?"}</td>
+      <td data-label="Extra scans"><input type="number" min="0" value="${x.bonus}" data-bonus="${x.id}" aria-label="Extra scans for ${esc(x.email)}"></td>
+      <td data-label="VIP"><label class="switch"><input type="checkbox" data-vip="${x.id}" ${x.vip ? "checked" : ""} aria-label="VIP for ${esc(x.email)}"><span></span></label></td>
+      <td><button class="ghost small" data-reset="${x.id}">Reset usage</button></td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="8" class="muted">No accounts match.</td></tr>`;
+}
+
+async function load() {
+  data = await call({ action: "load" });
+  render();
+}
+
+async function updateUser(id, changes, done) {
+  try { data = await call({ action: "update_user", user_id: id, changes }); render(); toast(done); }
+  catch (e) { toast(e.message, true); renderUsers(); }
+}
+
+$("enter").onclick = async () => {
+  key = $("key").value.trim();
+  if (!key) return;
+  try {
+    await load();
+    if ($("remember").checked) store("forma.admin.key", key);
+    $("login").classList.add("hidden"); $("app").classList.remove("hidden");
+  } catch (e) { toast(e.message, true); }
+};
+$("key").addEventListener("keydown", (e) => { if (e.key === "Enter") $("enter").click(); });
+$("logout").onclick = () => { store("forma.admin.key", null); key = ""; location.reload(); };
+$("refresh").onclick = () => load().then(() => toast("Up to date")).catch((e) => toast(e.message, true));
+$("search").oninput = renderUsers;
+
+function add(k, input) {
+  const v = $(input).value.trim().toLowerCase();
+  if (!v) return;
+  if (k === "vip_match" && v.length < 3) return toast("Names need at least 3 letters", true);
+  if (k === "vip_emails" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return toast("That isn't a valid email", true);
+  if (!lists[k].includes(v)) lists[k].push(v);
+  $(input).value = ""; renderChips();
+}
+$("addMatch").onclick = () => add("vip_match", "matchInput");
+$("addEmail").onclick = () => add("vip_emails", "emailInput");
+$("matchInput").addEventListener("keydown", (e) => { if (e.key === "Enter") add("vip_match", "matchInput"); });
+$("emailInput").addEventListener("keydown", (e) => { if (e.key === "Enter") add("vip_emails", "emailInput"); });
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-k]");
+  if (b) { lists[b.dataset.k].splice(Number(b.dataset.i), 1); renderChips(); }
+  const r = e.target.closest("button[data-reset]");
+  if (r && confirm("Reset this account's free and monthly scan counts to zero?")) updateUser(r.dataset.reset, { reset_free: true, reset_month: true }, "Usage reset");
+});
+document.addEventListener("change", (e) => {
+  const v = e.target.closest("input[data-vip]");
+  if (v) updateUser(v.dataset.vip, { vip: v.checked }, v.checked ? "VIP on" : "VIP off");
+  const n = e.target.closest("input[data-bonus]");
+  if (n) updateUser(n.dataset.bonus, { bonus: Number(n.value) }, "Extra scans saved");
+});
+
+$("save").onclick = async () => {
+  const settings = { ...lists };
+  for (const k of ["free_scans", "trial_scans", "pro_monthly_scans", "vip_monthly_scans"]) settings[k] = Number($(k).value);
+  try { data = await call({ action: "save_settings", settings }); render(); toast("Saved. The app uses it on the next scan."); }
+  catch (e) { toast(e.message, true); }
+};
+
+const saved = read("forma.admin.key");
+if (saved) { $("key").value = saved; $("enter").click(); }
+</script>
+</body>
+</html>
