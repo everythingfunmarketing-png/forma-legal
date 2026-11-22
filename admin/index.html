@@ -36,7 +36,7 @@
   table { width:100%; border-collapse:collapse; min-width:820px; }
   th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:middle; font-variant-numeric:tabular-nums; }
   th { color:var(--muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
-  td.email { max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  td.email { max-width:320px; white-space:nowrap; }
   .badge { display:inline-block; font-size:12px; font-weight:700; padding:3px 9px; border-radius:999px; background:var(--raised); color:var(--muted); white-space:nowrap; }
   .badge.vip { background:var(--blue); color:#fff; }
   .badge.owner, .badge.friend { background:#fff; color:#000; }
@@ -48,6 +48,15 @@
   .switch input:checked + span { background:var(--blue); }
   .switch input:checked + span::after { transform:translateX(18px); }
   .muted { color:var(--muted); }
+  .switch input:disabled + span { opacity:.35; }
+  .more { position:relative; }
+  .more > button { background:var(--raised); color:var(--ink); width:36px; height:36px; padding:0; border-radius:50%; font-size:18px; line-height:1; }
+  .menu { position:fixed; z-index:50; background:#1c1c1e; border:1px solid var(--line); border-radius:14px; padding:6px; min-width:220px; box-shadow:0 12px 32px rgba(0,0,0,.5); }
+  .menu button { display:block; width:100%; text-align:left; background:none; color:var(--ink); border-radius:10px; padding:10px 12px; font-weight:500; }
+  .menu button:hover { background:var(--raised); }
+  .menu button.danger { color:var(--red); }
+  .emailcell { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .emailtext { min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#fff; color:#000; padding:10px 18px; border-radius:999px; font-weight:600; opacity:0; transition:.25s; pointer-events:none; }
   .toast.show { opacity:1; }
   .toast.err { background:var(--red); color:#fff; }
@@ -62,7 +71,7 @@
     tr { background:var(--raised); border-radius:16px; padding:12px 14px; margin-bottom:10px; }
     td { border:0; padding:5px 0; display:flex; justify-content:space-between; align-items:center; gap:12px; }
     td::before { content:attr(data-label); color:var(--muted); font-size:13px; }
-    td.email { display:block; max-width:none; white-space:normal; font-weight:600; padding-bottom:8px; }
+    td.email { display:block; max-width:none; white-space:normal; font-weight:600; padding-bottom:8px; overflow:visible; }
     td.email::before { content:none; }
     td:last-child::before { content:none; }
     td:last-child button { width:100%; }
@@ -109,6 +118,7 @@
         <div><label for="pro_monthly_scans">Pro scans per month</label><input id="pro_monthly_scans" type="number" min="0"></div>
         <div><label for="vip_monthly_scans">VIP scans per month</label><input id="vip_monthly_scans" type="number" min="0"></div>
       </div>
+      <div style="margin-top:16px"><button class="primary" id="save">Save limits</button></div>
     </div>
 
     <div class="card">
@@ -119,14 +129,14 @@
       <label style="margin-top:16px">Exact emails with VIP</label>
       <div class="chips" id="vip_emails"></div>
       <div class="row"><input id="emailInput" type="text" placeholder="Add an email"><button class="ghost" id="addEmail">Add</button></div>
-      <div style="margin-top:16px"><button class="primary" id="save">Save limits and VIP</button></div>
+      <p class="muted" style="font-size:13px; margin:12px 0 0">Names and emails save as soon as you add or remove them.</p>
     </div>
 
     <div class="card">
       <div class="top" style="align-items:center"><h2 style="margin:0">Accounts</h2><input id="search" type="search" placeholder="Search email" style="max-width:260px"></div>
       <div class="table" style="margin-top:12px">
         <table>
-          <thead><tr><th>Email</th><th>Access</th><th>This month</th><th>All time</th><th>Free used</th><th>Extra scans</th><th>VIP</th><th></th></tr></thead>
+          <thead><tr><th>Email</th><th>Access</th><th>This month</th><th>All time</th><th>Free used</th><th>Extra scans</th><th>VIP</th></tr></thead>
           <tbody id="users"></tbody>
         </table>
       </div>
@@ -181,18 +191,39 @@ function renderUsers() {
   const q = $("search").value.trim().toLowerCase();
   const rows = data.users.filter((x) => !q || (x.email || "").toLowerCase().includes(q));
   $("users").innerHTML = rows.map((x) => {
-    const cls = x.access.startsWith("VIP") ? "vip" : x.access === "Owner" ? "owner" : x.access === "Friend" ? "friend" : "";
+    const cls = x.access.startsWith("VIP (") ? "vip" : x.access === "Owner" ? "owner" : x.access === "Friend" ? "friend" : "";
+    const forced = x.vip_override === true ? " · set by hand" : x.vip_override === false ? " · removed by hand" : "";
     return `<tr>
-      <td class="email" title="${esc(x.email)}">${esc(x.email || "No email (Apple private)")}<div class="muted" style="font-size:12px">Joined ${new Date(x.created_at).toLocaleDateString()}</div></td>
+      <td class="email"><div class="emailcell">
+        <div class="emailtext" title="${esc(x.email)}">${esc(x.email || "No email (Apple private)")}<div class="muted" style="font-size:12px; font-weight:400">Joined ${new Date(x.created_at).toLocaleDateString()}${forced}</div></div>
+        <div class="more"><button data-menu="${x.id}" aria-label="More for ${esc(x.email)}">⋯</button>${openMenu === x.id ? menuFor(x) : ""}</div>
+      </div></td>
       <td data-label="Access"><span class="badge ${cls}">${esc(x.access)}</span></td>
       <td data-label="Scans this month">${x.scans_month}</td>
       <td data-label="Scans all time">${x.scans_total}</td>
       <td data-label="Free scans used">${x.free_used} / ${data.settings.free_scans ?? "?"}</td>
       <td data-label="Extra scans"><input type="number" min="0" value="${x.bonus}" data-bonus="${x.id}" aria-label="Extra scans for ${esc(x.email)}"></td>
-      <td data-label="VIP"><label class="switch"><input type="checkbox" data-vip="${x.id}" ${x.vip ? "checked" : ""} aria-label="VIP for ${esc(x.email)}"><span></span></label></td>
-      <td><button class="ghost small" data-reset="${x.id}">Reset usage</button></td>
+      <td data-label="VIP"><label class="switch"><input type="checkbox" data-vip="${x.id}" ${x.vip ? "checked" : ""} ${x.locked ? "disabled" : ""} aria-label="VIP for ${esc(x.email)}"><span></span></label></td>
     </tr>`;
-  }).join("") || `<tr><td colspan="8" class="muted">No accounts match.</td></tr>`;
+  }).join("") || `<tr><td colspan="7" class="muted">No accounts match.</td></tr>`;
+  // The menu floats over the page, placed under its ⋯ button, so the table never cuts it off.
+  const menu = document.querySelector(".menu"), btn = openMenu && document.querySelector(`button[data-menu="${openMenu}"]`);
+  if (menu && btn) {
+    const r = btn.getBoundingClientRect(), w = 230, h = menu.offsetHeight;
+    menu.style.left = Math.max(8, Math.min(r.right - w, innerWidth - w - 8)) + "px";
+    menu.style.top = (r.bottom + 6 + h > innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6) + "px";
+    menu.style.minWidth = w + "px";
+  }
+}
+
+let openMenu = null;
+function menuFor(x) {
+  const items = [];
+  if (!x.locked) items.push(x.vip ? `<button class="danger" data-act="vip-off" data-id="${x.id}">Remove VIP</button>` : `<button data-act="vip-on" data-id="${x.id}">Give VIP</button>`);
+  if (x.vip_override !== null && x.vip_override !== undefined) items.push(`<button data-act="vip-auto" data-id="${x.id}">Back to automatic VIP</button>`);
+  items.push(`<button data-act="plus10" data-id="${x.id}">Add 10 extra scans</button>`);
+  items.push(`<button class="danger" data-act="reset" data-id="${x.id}">Reset scan usage</button>`);
+  return `<div class="menu">${items.join("")}</div>`;
 }
 
 async function load() {
@@ -218,6 +249,7 @@ $("key").addEventListener("keydown", (e) => { if (e.key === "Enter") $("enter").
 $("logout").onclick = () => { store("forma.admin.key", null); key = ""; location.reload(); };
 $("refresh").onclick = () => load().then(() => toast("Up to date")).catch((e) => toast(e.message, true));
 $("search").oninput = renderUsers;
+addEventListener("scroll", () => { if (openMenu) { openMenu = null; renderUsers(); } }, { passive: true });
 
 function add(k, input) {
   const v = $(input).value.trim().toLowerCase();
@@ -226,6 +258,11 @@ function add(k, input) {
   if (k === "vip_emails" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return toast("That isn't a valid email", true);
   if (!lists[k].includes(v)) lists[k].push(v);
   $(input).value = ""; renderChips();
+  saveLists(k === "vip_match" ? `Added “${v}”` : `Added ${v}`);
+}
+async function saveLists(done) {
+  try { data = await call({ action: "save_settings", settings: { vip_match: lists.vip_match, vip_emails: lists.vip_emails } }); render(); toast(done); }
+  catch (e) { toast(e.message, true); load(); }
 }
 $("addMatch").onclick = () => add("vip_match", "matchInput");
 $("addEmail").onclick = () => add("vip_emails", "emailInput");
@@ -233,9 +270,20 @@ $("matchInput").addEventListener("keydown", (e) => { if (e.key === "Enter") add(
 $("emailInput").addEventListener("keydown", (e) => { if (e.key === "Enter") add("vip_emails", "emailInput"); });
 document.addEventListener("click", (e) => {
   const b = e.target.closest("button[data-k]");
-  if (b) { lists[b.dataset.k].splice(Number(b.dataset.i), 1); renderChips(); }
-  const r = e.target.closest("button[data-reset]");
-  if (r && confirm("Reset this account's free and monthly scan counts to zero?")) updateUser(r.dataset.reset, { reset_free: true, reset_month: true }, "Usage reset");
+  if (b) { const [gone] = lists[b.dataset.k].splice(Number(b.dataset.i), 1); renderChips(); saveLists(`Removed ${gone}`); return; }
+  const m = e.target.closest("button[data-menu]");
+  if (m) { openMenu = openMenu === m.dataset.menu ? null : m.dataset.menu; renderUsers(); return; }
+  const a = e.target.closest("button[data-act]");
+  if (a) {
+    const id = a.dataset.id, x = data.users.find((u) => u.id === id); openMenu = null;
+    if (a.dataset.act === "vip-off") updateUser(id, { vip: false }, "VIP removed");
+    if (a.dataset.act === "vip-on") updateUser(id, { vip: true }, "VIP given");
+    if (a.dataset.act === "vip-auto") updateUser(id, { vip: null }, "VIP back to automatic");
+    if (a.dataset.act === "plus10") updateUser(id, { bonus: (x?.bonus || 0) + 10 }, "Added 10 extra scans");
+    if (a.dataset.act === "reset") { if (confirm("Reset this account's free and monthly scan counts to zero?")) updateUser(id, { reset_free: true, reset_month: true }, "Usage reset"); else renderUsers(); }
+    return;
+  }
+  if (openMenu && !e.target.closest(".menu")) { openMenu = null; renderUsers(); }
 });
 document.addEventListener("change", (e) => {
   const v = e.target.closest("input[data-vip]");
@@ -245,7 +293,7 @@ document.addEventListener("change", (e) => {
 });
 
 $("save").onclick = async () => {
-  const settings = { ...lists };
+  const settings = {};
   for (const k of ["free_scans", "trial_scans", "pro_monthly_scans", "vip_monthly_scans"]) settings[k] = Number($(k).value);
   try { data = await call({ action: "save_settings", settings }); render(); toast("Saved. The app uses it on the next scan."); }
   catch (e) { toast(e.message, true); }
