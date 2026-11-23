@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta http-equiv="cache-control" content="no-cache">
-<meta name="forma-admin-version" content="4">
+<meta name="forma-admin-version" content="5">
 <title>Forma Admin</title>
 <style>
   :root { --bg:#000; --surface:#161616; --raised:#222; --line:#2a2a2a; --ink:#fff; --muted:#9c9c9c; --blue:#4a7cf0; --red:#f0665a; --green:#33c76b; }
@@ -50,6 +50,17 @@
   .switch input:checked + span { background:var(--blue); }
   .switch input:checked + span::after { transform:translateX(18px); }
   .muted { color:var(--muted); }
+  .seg { display:inline-flex; background:var(--raised); border-radius:999px; padding:3px; gap:2px; }
+  .seg button { background:none; color:var(--muted); padding:6px 12px; font-size:13px; }
+  .seg button.on { background:var(--ink); color:#000; }
+  .fstep { display:grid; grid-template-columns: minmax(120px, 190px) 1fr 54px 64px; gap:10px; align-items:center; padding:7px 0; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+  .fstep:last-child { border-bottom:0; }
+  .fbar { height:10px; background:var(--raised); border-radius:999px; overflow:hidden; }
+  .fbar i { display:block; height:100%; background:var(--blue); border-radius:999px; transition:width .5s ease; }
+  .fdrop { font-size:12px; text-align:right; }
+  .fdrop.bad { color:var(--red); font-weight:700; }
+  .fgroup { color:var(--muted); font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin:14px 0 2px; }
+  @media (max-width: 720px) { .fstep { grid-template-columns: 1fr 44px 56px; } .fbar { grid-column: 1 / -1; order: 3; } }
   .switch input:disabled + span { opacity:.35; }
   .more { position:relative; }
   .more > button { background:var(--raised); color:var(--ink); width:36px; height:36px; padding:0; border-radius:50%; font-size:18px; line-height:1; }
@@ -104,12 +115,19 @@
   <div id="app" class="hidden">
     <div class="top">
       <div><div class="eyebrow">Forma</div><h1>Admin</h1></div>
-      <div class="row"><span class="muted" style="font-size:12px">Version 4</span><button class="ghost small" id="refresh">Refresh</button><button class="ghost small" id="logout">Lock</button></div>
+      <div class="row"><span class="muted" style="font-size:12px">Version 5</span><button class="ghost small" id="refresh">Refresh</button><button class="ghost small" id="logout">Lock</button></div>
     </div>
 
     <div class="card">
       <h2>Overview</h2>
       <div class="stats" id="stats"></div>
+    </div>
+
+    <div class="card">
+      <div class="top" style="align-items:center"><h2 style="margin:0">Funnel</h2>
+        <div class="seg" id="range"><button data-days="7">7 days</button><button data-days="30" class="on">30 days</button><button data-days="0">All time</button></div></div>
+      <p class="muted" style="font-size:13px; margin:8px 0 4px">People reaching each step, from the App Store app only (not the simulator). The red number is the biggest drop: fix that screen first.</p>
+      <div id="funnel"><p class="muted">Loading…</p></div>
     </div>
 
     <div class="card">
@@ -228,10 +246,47 @@ function menuFor(x) {
   return `<div class="menu">${items.join("")}</div>`;
 }
 
+let funnelDays = 30;
+async function loadFunnel() {
+  try {
+    const f = await call({ action: "funnel", days: funnelDays });
+    const top = Math.max(1, f.steps[0].count, ...f.steps.map((x) => x.count));
+    // Biggest drop between consecutive onboarding / paywall steps.
+    const chain = f.steps.filter((x) => x.step.startsWith("onb_") || x.step.startsWith("paywall") || x.step === "trial_start");
+    let worst = null;
+    for (let i = 1; i < chain.length; i++) {
+      const lost = chain[i - 1].count - chain[i].count;
+      if (chain[i - 1].count >= 5 && (!worst || lost / chain[i - 1].count > worst.rate)) worst = { step: chain[i].step, rate: lost / chain[i - 1].count };
+    }
+    const groups = { onb_landing: "Onboarding", paywall_view: "Paywall", sign_in: "After sign-up" };
+    let prev = null;
+    $("funnel").innerHTML = f.steps.map((x) => {
+      const pct = Math.round((x.count / Math.max(1, f.steps[0].count)) * 100);
+      const drop = prev && prev.count ? Math.round(((prev.count - x.count) / prev.count) * 100) : null;
+      const bad = worst && worst.step === x.step;
+      // Onboarding and paywall steps show how many dropped since the step before; later steps show % of everyone who opened the app.
+      const inChain = x.step.startsWith("onb_") || x.step.startsWith("paywall") || x.step === "trial_start";
+      const note = inChain ? (drop !== null && drop > 0 ? "−" + drop + "%" : "") : pct + "%";
+      const head = groups[x.step] ? `<div class="fgroup">${groups[x.step]}</div>` : "";
+      const row = `${head}<div class="fstep"><span>${esc(x.label)}</span><div class="fbar"><i style="width:${(x.count / top) * 100}%"></i></div><b style="text-align:right">${x.count}</b><span class="fdrop ${bad ? "bad" : "muted"}">${note}</span></div>`;
+      prev = x; return row;
+    }).join("");
+    if (!f.steps[0].count) $("funnel").insertAdjacentHTML("afterbegin", `<p class="muted" style="font-size:13px">No data yet. Steps appear once people open the App Store or TestFlight version with build 27 or later.</p>`);
+  } catch (e) { $("funnel").innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
+}
+
 async function load() {
   data = await call({ action: "load" });
   render();
+  loadFunnel();
 }
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("#range button");
+  if (!b) return;
+  funnelDays = Number(b.dataset.days);
+  document.querySelectorAll("#range button").forEach((x) => x.classList.toggle("on", x === b));
+  loadFunnel();
+});
 
 async function updateUser(id, changes, done) {
   try { data = await call({ action: "update_user", user_id: id, changes }); render(); toast(done); }
