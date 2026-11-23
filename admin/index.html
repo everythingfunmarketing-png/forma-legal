@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta http-equiv="cache-control" content="no-cache">
-<meta name="forma-admin-version" content="6">
+<meta name="forma-admin-version" content="7">
 <title>Forma Admin</title>
 <style>
   :root { --bg:#000; --surface:#161616; --raised:#222; --line:#2a2a2a; --ink:#fff; --muted:#9c9c9c; --blue:#4a7cf0; --red:#f0665a; --green:#33c76b; }
@@ -53,7 +53,7 @@
   .seg { display:inline-flex; background:var(--raised); border-radius:999px; padding:3px; gap:2px; }
   .seg button { background:none; color:var(--muted); padding:6px 12px; font-size:13px; }
   .seg button.on { background:var(--ink); color:#000; }
-  .fstep { display:grid; grid-template-columns: minmax(120px, 190px) 1fr 54px 64px; gap:10px; align-items:center; padding:7px 0; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+  .fstep { display:grid; grid-template-columns: minmax(120px, 190px) 1fr 54px 110px; gap:10px; align-items:center; padding:7px 0; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
   .fstep:last-child { border-bottom:0; }
   .fbar { height:10px; background:var(--raised); border-radius:999px; overflow:hidden; }
   .fbar i { display:block; height:100%; background:var(--blue); border-radius:999px; transition:width .5s ease; }
@@ -118,7 +118,7 @@
   <div id="app" class="hidden">
     <div class="top">
       <div><div class="eyebrow">Forma</div><h1>Admin</h1></div>
-      <div class="row"><span class="muted" style="font-size:12px">Version 6</span><button class="ghost small" id="refresh">Refresh</button><button class="ghost small" id="logout">Lock</button></div>
+      <div class="row"><span class="muted" style="font-size:12px">Version 7</span><button class="ghost small" id="refresh">Refresh</button><button class="ghost small" id="logout">Lock</button></div>
     </div>
 
     <div class="card">
@@ -270,7 +270,7 @@ async function loadFunnel() {
     const f = await call({ action: "funnel", days: funnelDays });
     const top = Math.max(1, f.steps[0].count, ...f.steps.map((x) => x.count));
     // Biggest drop between consecutive onboarding / paywall steps.
-    const chain = f.steps.filter((x) => x.step.startsWith("onb_") || x.step.startsWith("paywall") || x.step === "trial_start");
+    const chain = f.steps.filter((x) => x.step.startsWith("onb_") || x.step === "paywall_view" || x.step === "trial_start");
     let worst = null;
     for (let i = 1; i < chain.length; i++) {
       const lost = chain[i - 1].count - chain[i].count;
@@ -283,8 +283,10 @@ async function loadFunnel() {
       const drop = prev && prev.count ? Math.round(((prev.count - x.count) / prev.count) * 100) : null;
       const bad = worst && worst.step === x.step;
       // Onboarding and paywall steps show how many dropped since the step before; later steps show % of everyone who opened the app.
-      const inChain = x.step.startsWith("onb_") || x.step.startsWith("paywall") || x.step === "trial_start";
-      const note = inChain ? (drop !== null && drop > 0 ? "−" + drop + "%" : "") : pct + "%";
+      const views = (f.steps.find((y) => y.step === "paywall_view") || {}).count || 0;
+      const ofViews = (n) => views ? Math.round((n / views) * 100) + "% of paywall" : "";
+      const note = x.step.startsWith("onb_") || x.step === "paywall_view" ? (drop !== null && drop > 0 ? "−" + drop + "%" : "")
+        : ["paywall_plans", "trial_start", "purchase"].includes(x.step) ? ofViews(x.count) : pct + "%";
       const head = groups[x.step] ? `<div class="fgroup">${groups[x.step]}</div>` : "";
       const row = `${head}<div class="fstep"><span>${esc(x.label)}</span><div class="fbar"><i style="width:${(x.count / top) * 100}%"></i></div><b style="text-align:right">${x.count}</b><span class="fdrop ${bad ? "bad" : "muted"}">${note}</span></div>`;
       prev = x; return row;
