@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta http-equiv="cache-control" content="no-cache">
-<meta name="forma-admin-version" content="7">
+<meta name="forma-admin-version" content="8">
 <title>Forma Admin</title>
 <style>
   :root { --bg:#000; --surface:#161616; --raised:#222; --line:#2a2a2a; --ink:#fff; --muted:#9c9c9c; --blue:#4a7cf0; --red:#f0665a; --green:#33c76b; }
@@ -62,6 +62,9 @@
   .ptable td, .ptable th { padding:9px 6px; }
   .best { color:var(--green); font-weight:700; }
   .codes td, .codes th { padding:8px 6px; }
+  .econ { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; }
+  .money input { width:100%; }
+  .pos { color:var(--green); font-weight:700; } .neg { color:var(--red); font-weight:700; }
   .fgroup { color:var(--muted); font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin:14px 0 2px; }
   @media (max-width: 720px) { .fstep { grid-template-columns: 1fr 44px 56px; } .fbar { grid-column: 1 / -1; order: 3; } }
   .switch input:disabled + span { opacity:.35; }
@@ -118,7 +121,7 @@
   <div id="app" class="hidden">
     <div class="top">
       <div><div class="eyebrow">Forma</div><h1>Admin</h1></div>
-      <div class="row"><span class="muted" style="font-size:12px">Version 7</span><button class="ghost small" id="refresh">Refresh</button><button class="ghost small" id="logout">Lock</button></div>
+      <div class="row"><span class="muted" style="font-size:12px">Version 8</span><button class="ghost small" id="refresh">Refresh</button><button class="ghost small" id="logout">Lock</button></div>
     </div>
 
     <div class="card">
@@ -149,6 +152,37 @@
     </div>
 
     <div class="card">
+      <h2>Economics</h2>
+      <p class="muted" style="font-size:13px; margin:0 0 12px">The most you can pay to win a customer and still keep your margin. Change the assumptions as real numbers come in.</p>
+      <div class="econ">
+        <div><label for="e_trial_to_paid">Trials that pay (%)</label><input id="e_trial_to_paid" type="number" min="0" max="100" step="1"></div>
+        <div><label for="e_renewal">Yearly renewals (%)</label><input id="e_renewal" type="number" min="0" max="100" step="1"></div>
+        <div><label for="e_refund">Refunds (%)</label><input id="e_refund" type="number" min="0" max="100" step="1"></div>
+        <div><label for="e_margin">Profit you want to keep (%)</label><input id="e_margin" type="number" min="0" max="95" step="1"></div>
+        <div><label for="e_installs_per_1000">Installs per 1,000 views</label><input id="e_installs_per_1000" type="number" min="0" step="0.1"></div>
+      </div>
+      <div class="stats" id="econOut" style="margin-top:14px"></div>
+      <h2 style="margin-top:18px">Creators: are they profitable?</h2>
+      <div class="table"><table class="codes" style="min-width:0"><thead><tr><th>Code</th><th>Trials</th><th>You paid ($)</th><th>Cost per trial</th><th>Estimated profit</th></tr></thead><tbody id="creatorEcon"></tbody></table></div>
+      <div style="margin-top:14px"><button class="primary" id="saveEcon">Save economics</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Profit safeguards</h2>
+      <p class="muted" style="font-size:13px; margin:0 0 12px">Each person's AI cost this month is capped by plan. From 70% of their cap, scans skip the expensive second look. The daily budget covers everyone: above it scans run in economy mode, above 150% they pause (owners excepted). Scan Pack scans skip the monthly cap because they're paid for.</p>
+      <div class="grid money">
+        <div><label for="cap_free_usd">Free account cap ($/month)</label><input id="cap_free_usd" type="number" min="0" step="0.05"></div>
+        <div><label for="cap_trial_usd">Free trial cap ($/month)</label><input id="cap_trial_usd" type="number" min="0" step="0.05"></div>
+        <div><label for="cap_monthly_usd">Monthly plan cap ($/month)</label><input id="cap_monthly_usd" type="number" min="0" step="0.05"></div>
+        <div><label for="cap_yearly_usd">Yearly plan cap ($/month)</label><input id="cap_yearly_usd" type="number" min="0" step="0.05"></div>
+        <div><label for="cap_vip_usd">VIP cap ($/month)</label><input id="cap_vip_usd" type="number" min="0" step="0.05"></div>
+        <div><label for="daily_budget_usd">Daily AI budget, everyone ($)</label><input id="daily_budget_usd" type="number" min="0" step="1"></div>
+        <div><label for="max_scans_per_hour">Max scans per hour, per person</label><input id="max_scans_per_hour" type="number" min="1" step="1"></div>
+      </div>
+      <div style="margin-top:16px"><button class="primary" id="saveSafe">Save safeguards</button></div>
+    </div>
+
+    <div class="card">
       <h2>Scan limits</h2>
       <div class="grid">
         <div><label for="free_scans">Free scans per account</label><input id="free_scans" type="number" min="0"></div>
@@ -174,7 +208,7 @@
       <div class="top" style="align-items:center"><h2 style="margin:0">Accounts</h2><input id="search" type="search" placeholder="Search email" style="max-width:260px"></div>
       <div class="table" style="margin-top:12px">
         <table>
-          <thead><tr><th>Email</th><th>Access</th><th>This month</th><th>All time</th><th>Free used</th><th>Extra scans</th><th>VIP</th></tr></thead>
+          <thead><tr><th>Email</th><th>Access</th><th>This month</th><th>All time</th><th>Free used</th><th>AI cost (month)</th><th>Extra scans</th><th>VIP</th></tr></thead>
           <tbody id="users"></tbody>
         </table>
       </div>
@@ -213,8 +247,10 @@ function render() {
   const u = data.users;
   const vip = u.filter((x) => x.access !== "Standard").length;
   const month = u.reduce((a, x) => a + x.scans_month, 0), all = u.reduce((a, x) => a + x.scans_total, 0);
-  $("stats").innerHTML = [["Accounts", u.length], ["VIP, owners and friends", vip], ["Scans this month", month], ["Scans all time", all]]
-    .map(([l, v]) => `<div class="stat"><b>${v.toLocaleString()}</b><span>${l}</span></div>`).join("");
+  const cost = u.reduce((a, x) => a + (x.cost_month || 0), 0);
+  $("stats").innerHTML = [["Accounts", u.length], ["VIP, owners and friends", vip], ["Scans this month", month], ["Scans all time", all], ["AI cost this month", "$" + cost.toFixed(2)]]
+    .map(([l, v]) => `<div class="stat"><b>${typeof v === "number" ? v.toLocaleString() : v}</b><span>${l}</span></div>`).join("");
+  renderSafeguards(); renderEcon();
   renderUsers();
 }
 
@@ -240,10 +276,11 @@ function renderUsers() {
       <td data-label="Scans this month">${x.scans_month}</td>
       <td data-label="Scans all time">${x.scans_total}</td>
       <td data-label="Free scans used">${x.free_used} / ${data.settings.free_scans ?? "?"}</td>
+      <td data-label="AI cost this month">$${(x.cost_month || 0).toFixed(2)}</td>
       <td data-label="Extra scans"><input type="number" min="0" value="${x.bonus}" data-bonus="${x.id}" aria-label="Extra scans for ${esc(x.email)}"></td>
       <td data-label="VIP"><label class="switch"><input type="checkbox" data-vip="${x.id}" ${x.vip ? "checked" : ""} ${x.locked ? "disabled" : ""} aria-label="VIP for ${esc(x.email)}"><span></span></label></td>
     </tr>`;
-  }).join("") || `<tr><td colspan="7" class="muted">No accounts match.</td></tr>`;
+  }).join("") || `<tr><td colspan="8" class="muted">No accounts match.</td></tr>`;
   // The menu floats over the page, placed under its ⋯ button, so the table never cuts it off.
   const menu = document.querySelector(".menu"), btn = openMenu && document.querySelector(`button[data-menu="${openMenu}"]`);
   if (menu && btn) {
@@ -268,6 +305,7 @@ let funnelDays = 30;
 async function loadFunnel() {
   try {
     const f = await call({ action: "funnel", days: funnelDays });
+    window.funnelData = f;
     const top = Math.max(1, f.steps[0].count, ...f.steps.map((x) => x.count));
     // Biggest drop between consecutive onboarding / paywall steps.
     const chain = f.steps.filter((x) => x.step.startsWith("onb_") || x.step === "paywall_view" || x.step === "trial_start");
@@ -295,6 +333,65 @@ async function loadFunnel() {
   } catch (e) { $("funnel").innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
 }
 
+const SAFE = { cap_free_usd: 0.10, cap_trial_usd: 0.40, cap_monthly_usd: 2.00, cap_yearly_usd: 1.20, cap_vip_usd: 2.50, daily_budget_usd: 20, max_scans_per_hour: 25 };
+const ECON = { trial_to_paid: 40, renewal: 35, refund: 5, margin: 30, installs_per_1000: 2 };
+function renderSafeguards() {
+  for (const k in SAFE) $(k).value = data.settings[k] ?? SAFE[k];
+}
+let creatorSpend = {};
+function econInputs() { const e = data.settings.economics || {}; const o = {}; for (const k in ECON) o[k] = e[k] ?? ECON[k]; return o; }
+function renderEcon(readInputs) {
+  if (!data) return;
+  const e = readInputs ? Object.fromEntries(Object.keys(ECON).map((k) => [k, Number($("e_" + k).value) || 0])) : econInputs();
+  if (!readInputs) for (const k in ECON) $("e_" + k).value = e[k];
+  if (!readInputs) creatorSpend = { ...(data.settings.creator_spend || {}) };
+  // Yearly plan at the price most people see; Apple keeps 15% (Small Business Program).
+  const price = 39.99, net = price * 0.85 * (1 - e.refund / 100);
+  const r = e.renewal / 100, ltvRevenue = net * (1 + r + r * r);
+  // AI cost: the real average of people who scanned this month, never more than the yearly plan's cap.
+  const cap = Number(data.settings.cap_yearly_usd ?? SAFE.cap_yearly_usd);
+  const scanners = data.users.filter((x) => x.scans_month > 0);
+  const avgMonthly = scanners.length ? scanners.reduce((a, x) => a + (x.cost_month || 0), 0) / scanners.length : cap / 2;
+  const aiCost = Math.min(cap, avgMonthly) * 12 * (1 + r + r * r);
+  const ltv = Math.max(0, ltvRevenue - aiCost);
+  const perTrial = ltv * (e.trial_to_paid / 100) * (1 - e.margin / 100);
+  const f = window.funnelData; const views = f ? (f.steps.find((x) => x.step === "onb_landing") || {}).count : 0;
+  const trials = f ? ((f.steps.find((x) => x.step === "trial_start") || {}).count || 0) + ((f.steps.find((x) => x.step === "purchase") || {}).count || 0) : 0;
+  const installToTrial = views >= 100 ? trials / views : 0.10;
+  const perInstall = perTrial * installToTrial, per1000 = perInstall * e.installs_per_1000;
+  $("econOut").innerHTML = [
+    ["Lifetime value per payer", "$" + ltv.toFixed(2), "after Apple, refunds and AI cost"],
+    ["Max per free trial", "$" + perTrial.toFixed(2), "keeps your " + e.margin + "% profit"],
+    ["Max per install", "$" + perInstall.toFixed(2), views >= 100 ? (installToTrial * 100).toFixed(1) + "% of installs start a trial" : "assumes 10% start a trial"],
+    ["Max per 1,000 views", "$" + per1000.toFixed(2), "your creator CPM ceiling"],
+  ].map(([l, v, n]) => `<div class="stat"><b>${v}</b><span>${l}</span><div class="muted" style="font-size:11px; margin-top:4px">${n}</div></div>`).join("");
+  const codes = (growth && growth.codes) || [];
+  $("creatorEcon").innerHTML = codes.length ? codes.map((c) => {
+    const paid = Number(creatorSpend[c.code] || 0);
+    const value = c.trials * (e.trial_to_paid / 100) * ltv;
+    const profit = value - paid;
+    return `<tr><td data-label="Code"><b>${esc(c.code)}</b></td><td data-label="Trials">${c.trials}</td>
+      <td data-label="You paid"><input type="number" min="0" step="1" value="${paid || ""}" data-spend="${esc(c.code)}" style="width:90px"></td>
+      <td data-label="Cost per trial">${c.trials ? "$" + (paid / c.trials).toFixed(2) : "–"}</td>
+      <td data-label="Estimated profit" class="${profit >= 0 ? "pos" : "neg"}">${profit >= 0 ? "+" : "−"}$${Math.abs(profit).toFixed(0)}</td></tr>`;
+  }).join("") : `<tr><td colspan="5" class="muted">Creator codes appear here once people type them in onboarding.</td></tr>`;
+}
+document.addEventListener("input", (e) => {
+  if (e.target.id && e.target.id.startsWith("e_")) renderEcon(true);
+  const sp = e.target.closest && e.target.closest("input[data-spend]");
+  if (sp) { creatorSpend[sp.dataset.spend] = Number(sp.value) || 0; renderEcon(true); }
+});
+document.addEventListener("click", async (e) => {
+  if (e.target.id === "saveSafe") {
+    const settings = {}; for (const k in SAFE) settings[k] = Number($(k).value);
+    try { data = await call({ action: "save_settings", settings }); render(); toast("Safeguards saved. They apply on the next scan."); } catch (err) { toast(err.message, true); }
+  }
+  if (e.target.id === "saveEcon") {
+    const economics = Object.fromEntries(Object.keys(ECON).map((k) => [k, Number($("e_" + k).value) || 0]));
+    try { data = await call({ action: "save_settings", settings: { economics, creator_spend: creatorSpend } }); render(); toast("Economics saved"); } catch (err) { toast(err.message, true); }
+  }
+});
+
 let growth = null;
 const SOURCE_NAMES = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", friend: "A friend", appstore: "App Store search", other: "Somewhere else" };
 function renderGrowth() {
@@ -320,7 +417,7 @@ function renderGrowth() {
     : `<tr><td colspan="3" class="muted">No codes yet.</td></tr>`;
 }
 async function loadGrowth() {
-  try { growth = await call({ action: "growth", days: funnelDays }); renderGrowth(); }
+  try { growth = await call({ action: "growth", days: funnelDays }); renderGrowth(); renderEcon(); }
   catch (e) { $("ptNote").textContent = e.message; }
 }
 async function savePriceTest(change, done) {
