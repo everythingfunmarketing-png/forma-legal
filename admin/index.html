@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta http-equiv="cache-control" content="no-cache">
-<meta name="forma-admin-version" content="5">
+<meta name="forma-admin-version" content="6">
 <title>Forma Admin</title>
 <style>
   :root { --bg:#000; --surface:#161616; --raised:#222; --line:#2a2a2a; --ink:#fff; --muted:#9c9c9c; --blue:#4a7cf0; --red:#f0665a; --green:#33c76b; }
@@ -59,6 +59,9 @@
   .fbar i { display:block; height:100%; background:var(--blue); border-radius:999px; transition:width .5s ease; }
   .fdrop { font-size:12px; text-align:right; }
   .fdrop.bad { color:var(--red); font-weight:700; }
+  .ptable td, .ptable th { padding:9px 6px; }
+  .best { color:var(--green); font-weight:700; }
+  .codes td, .codes th { padding:8px 6px; }
   .fgroup { color:var(--muted); font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin:14px 0 2px; }
   @media (max-width: 720px) { .fstep { grid-template-columns: 1fr 44px 56px; } .fbar { grid-column: 1 / -1; order: 3; } }
   .switch input:disabled + span { opacity:.35; }
@@ -115,7 +118,7 @@
   <div id="app" class="hidden">
     <div class="top">
       <div><div class="eyebrow">Forma</div><h1>Admin</h1></div>
-      <div class="row"><span class="muted" style="font-size:12px">Version 5</span><button class="ghost small" id="refresh">Refresh</button><button class="ghost small" id="logout">Lock</button></div>
+      <div class="row"><span class="muted" style="font-size:12px">Version 6</span><button class="ghost small" id="refresh">Refresh</button><button class="ghost small" id="logout">Lock</button></div>
     </div>
 
     <div class="card">
@@ -128,6 +131,21 @@
         <div class="seg" id="range"><button data-days="7">7 days</button><button data-days="30" class="on">30 days</button><button data-days="0">All time</button></div></div>
       <p class="muted" style="font-size:13px; margin:8px 0 4px">People reaching each step, from the App Store app only (not the simulator). The red number is the biggest drop: fix that screen first.</p>
       <div id="funnel"><p class="muted">Loading…</p></div>
+    </div>
+
+    <div class="card">
+      <div class="top" style="align-items:center"><h2 style="margin:0">Price test</h2>
+        <label class="switch" title="Run the price test"><input type="checkbox" id="ptOn"><span></span></label></div>
+      <p class="muted" style="font-size:13px; margin:8px 0 10px">Each new phone is shown one yearly price and keeps it. The winner is the price that earns the most per 100 people who see the paywall, not the one with the most trials. Only switch this on once all four yearly products are approved in App Store Connect.</p>
+      <div class="table"><table class="ptable" style="min-width:0"><thead><tr><th>In test</th><th>Yearly price</th><th>Saw paywall</th><th>Started</th><th>Rate</th><th>$ per 100 views</th></tr></thead><tbody id="prices"></tbody></table></div>
+      <p class="muted" style="font-size:12px; margin:10px 0 0" id="ptNote"></p>
+    </div>
+
+    <div class="card">
+      <h2>Where people heard about Forma</h2>
+      <div class="stats" id="sources"></div>
+      <h2 style="margin-top:18px">Creator codes</h2>
+      <div class="table"><table class="codes" style="min-width:0"><thead><tr><th>Code</th><th>People</th><th>Started trial or paid</th></tr></thead><tbody id="codes"></tbody></table></div>
     </div>
 
     <div class="card">
@@ -275,17 +293,59 @@ async function loadFunnel() {
   } catch (e) { $("funnel").innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
 }
 
+let growth = null;
+const SOURCE_NAMES = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", friend: "A friend", appstore: "App Store search", other: "Somewhere else" };
+function renderGrowth() {
+  const g = growth; if (!g) return;
+  $("ptOn").checked = g.enabled;
+  const rows = g.prices.map((p) => {
+    const started = p.trials + p.purchases;
+    const rate = p.views ? started / p.views : 0;
+    return { ...p, started, rate, per100: rate * p.price * 100 };
+  });
+  const enough = rows.filter((r) => r.views >= 100);
+  const best = enough.length ? enough.reduce((a, b) => (b.per100 > a.per100 ? b : a)) : null;
+  $("prices").innerHTML = rows.map((r) => `<tr>
+    <td data-label="In test"><label class="switch"><input type="checkbox" data-pt="${r.id}" ${r.on ? "checked" : ""} aria-label="Include $${r.price}"><span></span></label></td>
+    <td data-label="Yearly price"><b>$${r.price.toFixed(2)}</b></td>
+    <td data-label="Saw paywall">${r.views}</td><td data-label="Started">${r.started}</td>
+    <td data-label="Rate">${r.views ? (r.rate * 100).toFixed(1) + "%" : "–"}</td>
+    <td data-label="$ per 100 views" class="${best && best.id === r.id ? "best" : ""}">${r.views ? "$" + r.per100.toFixed(0) : "–"}${best && best.id === r.id ? " · best" : ""}</td></tr>`).join("");
+  $("ptNote").textContent = best ? `Leading: $${best.price.toFixed(2)} a year. Keep the test running until every price has at least 300 paywall views before deciding.`
+    : "Results show once each price has 100 paywall views. Assumes trials turn into paid at the same rate for every price; check renewals in App Store Connect too.";
+  $("sources").innerHTML = g.sources.map((x) => `<div class="stat"><b>${x.count}</b><span>${SOURCE_NAMES[x.source]}</span></div>`).join("");
+  $("codes").innerHTML = g.codes.length ? g.codes.map((c) => `<tr><td data-label="Code"><b>${esc(c.code)}</b></td><td data-label="People">${c.people}</td><td data-label="Started">${c.trials}</td></tr>`).join("")
+    : `<tr><td colspan="3" class="muted">No codes yet.</td></tr>`;
+}
+async function loadGrowth() {
+  try { growth = await call({ action: "growth", days: funnelDays }); renderGrowth(); }
+  catch (e) { $("ptNote").textContent = e.message; }
+}
+async function savePriceTest(change, done) {
+  try { growth = await call({ action: "save_price_test", days: funnelDays, price_test: change }); renderGrowth(); toast(done); }
+  catch (e) { toast(e.message, true); loadGrowth(); }
+}
+document.addEventListener("change", (e) => {
+  if (e.target.id === "ptOn") {
+    if (e.target.checked && !confirm("Start the price test? Only do this once the $29.99, $49.99 and $59.99 yearly products are approved in App Store Connect.")) { e.target.checked = false; return; }
+    savePriceTest({ enabled: e.target.checked }, e.target.checked ? "Price test on" : "Price test off");
+  }
+  const p = e.target.closest("input[data-pt]");
+  if (p) savePriceTest({ on: { [p.dataset.pt]: p.checked } }, p.checked ? "Price added to the test" : "Price removed from the test");
+});
+
 async function load() {
   data = await call({ action: "load" });
   render();
   loadFunnel();
+  loadGrowth();
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("#range button");
   if (!b) return;
   funnelDays = Number(b.dataset.days);
   document.querySelectorAll("#range button").forEach((x) => x.classList.toggle("on", x === b));
-  loadFunnel();
+  loadFunnel(); loadGrowth();
 });
 
 async function updateUser(id, changes, done) {
