@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta http-equiv="cache-control" content="no-cache">
-<meta name="forma-admin-version" content="8">
+<meta name="forma-admin-version" content="9">
 <title>Forma Admin</title>
 <style>
   :root { --bg:#000; --surface:#161616; --raised:#222; --line:#2a2a2a; --ink:#fff; --muted:#9c9c9c; --blue:#4a7cf0; --red:#f0665a; --green:#33c76b; }
@@ -248,6 +248,10 @@ function render() {
   const vip = u.filter((x) => x.access !== "Standard").length;
   const month = u.reduce((a, x) => a + x.scans_month, 0), all = u.reduce((a, x) => a + x.scans_total, 0);
   const cost = u.reduce((a, x) => a + (x.cost_month || 0), 0);
+  // A red warning when scans failed because the Anthropic account ran out of credit (in the last 2 days).
+  const alert = s.ai_alert, recent = alert && Date.now() - Date.parse(alert.at) < 2 * 86400000;
+  document.getElementById("aiAlert")?.remove();
+  if (recent) $("stats").insertAdjacentHTML("beforebegin", `<div id="aiAlert" class="card" style="border:1px solid #e5484d;color:#ff8589;margin-bottom:12px">AI scans failed on ${new Date(alert.at).toLocaleString()}: ${alert.reason}. Add credit at console.anthropic.com (Plans &amp; Billing) and turn on auto-reload.</div>`);
   $("stats").innerHTML = [["Accounts", u.length], ["VIP, owners and friends", vip], ["Scans this month", month], ["Scans all time", all], ["AI cost this month", "$" + cost.toFixed(2)]]
     .map(([l, v]) => `<div class="stat"><b>${typeof v === "number" ? v.toLocaleString() : v}</b><span>${l}</span></div>`).join("");
   renderSafeguards(); renderEcon();
