@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta http-equiv="cache-control" content="no-cache">
-<meta name="forma-admin-version" content="9">
+<meta name="forma-admin-version" content="10">
 <title>Forma Admin</title>
 <style>
   :root { --bg:#000; --surface:#161616; --raised:#222; --line:#2a2a2a; --ink:#fff; --muted:#9c9c9c; --blue:#4a7cf0; --red:#f0665a; --green:#33c76b; }
@@ -121,12 +121,19 @@
   <div id="app" class="hidden">
     <div class="top">
       <div><div class="eyebrow">Forma</div><h1>Admin</h1></div>
-      <div class="row"><span class="muted" style="font-size:12px">Version 8</span><button class="ghost small" id="refresh">Refresh</button><button class="ghost small" id="logout">Lock</button></div>
+      <div class="row"><span class="muted" style="font-size:12px">Version 10</span><button class="ghost small" id="refresh">Refresh</button><button class="ghost small" id="logout">Lock</button></div>
     </div>
 
     <div class="card">
       <h2>Overview</h2>
       <div class="stats" id="stats"></div>
+    </div>
+
+    <div class="card">
+      <div class="top" style="align-items:center"><h2 style="margin:0">Food reports</h2>
+        <div class="seg" id="reportFilter"><button data-open="1" class="on">To check</button><button data-open="0">All</button></div></div>
+      <p class="muted" style="font-size:13px; margin:8px 0 4px">Foods people flagged with "Report wrong values" in the app. Values are per 100 g as the app showed them. Fix the food (or the scanner), then mark it checked.</p>
+      <div id="reports"><p class="muted">Loading…</p></div>
     </div>
 
     <div class="card">
@@ -437,11 +444,43 @@ document.addEventListener("change", (e) => {
   if (p) savePriceTest({ on: { [p.dataset.pt]: p.checked } }, p.checked ? "Price added to the test" : "Price removed from the test");
 });
 
+let reports = [], reportsOpenOnly = true;
+const escHTML = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function renderReports() {
+  const list = reports.filter((r) => !reportsOpenOnly || !r.resolved);
+  const open = reports.filter((r) => !r.resolved).length;
+  const btn = document.querySelector('#reportFilter button[data-open="1"]'); if (btn) btn.textContent = `To check (${open})`;
+  if (!list.length) { $("reports").innerHTML = `<p class="muted">${reportsOpenOnly ? "Nothing to check." : "No reports yet."}</p>`; return; }
+  $("reports").innerHTML = `<table><thead><tr><th>Food</th><th>Problem</th><th>kcal</th><th>P / C / F</th><th>Grams</th><th>Source</th><th>When</th><th></th></tr></thead><tbody>` +
+    list.map((r) => `<tr style="${r.resolved ? "opacity:.5" : ""}">
+      <td data-label="Food"><b>${escHTML(r.food_name)}</b></td>
+      <td data-label="Problem">${escHTML(r.note || "")}</td>
+      <td data-label="kcal / 100 g">${r.kcal_100g ?? "–"}</td>
+      <td data-label="P / C / F">${[r.protein_100g, r.carbs_100g, r.fat_100g].map((v) => v ?? "–").join(" / ")}</td>
+      <td data-label="Grams">${r.grams ?? "–"}</td>
+      <td data-label="Source">${escHTML(r.source || "")}</td>
+      <td data-label="When">${new Date(r.created_at).toLocaleString()}</td>
+      <td><button class="ghost small" data-report="${r.id}" data-resolved="${r.resolved ? 0 : 1}">${r.resolved ? "Reopen" : "Checked"}</button></td>
+    </tr>`).join("") + `</tbody></table>`;
+}
+async function loadReports() {
+  try { reports = (await call({ action: "reports" })).reports || []; renderReports(); } catch (e) { $("reports").innerHTML = `<p class="muted">${escHTML(e.message)}</p>`; }
+}
+document.addEventListener("click", async (e) => {
+  const f = e.target.closest("#reportFilter button");
+  if (f) { reportsOpenOnly = f.dataset.open === "1"; document.querySelectorAll("#reportFilter button").forEach((x) => x.classList.toggle("on", x === f)); renderReports(); return; }
+  const b = e.target.closest("button[data-report]");
+  if (!b) return;
+  try { await call({ action: "resolve_report", id: Number(b.dataset.report), resolved: b.dataset.resolved === "1" }); await loadReports(); toast(b.dataset.resolved === "1" ? "Marked checked" : "Reopened"); }
+  catch (err) { toast(err.message, true); }
+});
+
 async function load() {
   data = await call({ action: "load" });
   render();
   loadFunnel();
   loadGrowth();
+  loadReports();
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("#range button");
